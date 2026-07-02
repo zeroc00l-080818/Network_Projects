@@ -1,0 +1,165 @@
+Solution
+
+Solution step by step
+
+Step 1 : Design the network in Packet Tracer
+Step 2 : Name all the devices, Network address, VLANs, etc..
+Step 3 : Create Boundaries if needed
+Step 4 : Make all the connections 
+		 Router -> Router (using DCE Serial Cable)
+		 Router -> Switch (using Copper Straight Through Cable)
+		 Switch -> Devices (Using Copper Straight Through Cable)
+
+Step 5 : Turn on the Router and enable the DCE Interface
+	5.1 Select any Router
+	5.2 Go to CLI tab
+	5.3 enter > enter
+	>enable 																		//enter into priviledge mode
+	#configure terminal	
+	(hover over the triangle that is showing between the routers to see the interface name and note it down)	
+	#interface se0/2/0(name of the interface from above step)						//select one of the interface available on the router that connects to the other routers
+	#no sh (no shutdown)															//Turn up the interface
+	(hover over the triangle that is showing between the routers to see the interface name and check for a clock symbol. the clock symbol will tell if the interface is the DCE interface or not. Once confirm do the following)
+	#clock rate 64000
+	(This sets the clocking speed on a serial interface, measured in bits per second (so 64000 = 64 kbps). It tells the interface how fast to transmit/receive bits on the serial line. "If not set up the traffic will not pass")
+	#int gig0/0 																	//Select the interface that is connected from Router -> Switch and turn it up on the next command
+	#no shutdown
+	
+Do the above step for all the other Routers.
+
+Now we make VLANs on the Switch
+
+Step 6 : Select any switch
+Step 7 : go to CLI
+(hover over the triangle that is on the wire that is connectin the siwtch and the end devices. Then note the interface name)
+Step 8 : 
+	8.1 >enable
+	8.2 #configure terminal
+	8.3 #interface range fa0/2-4															// this will select the interface range from Fa0/2 to Fa/04 
+	8.4 #switchport mode access																// tells the switch: "this port connects to a single end device (PC, printer, phone, Test-PC) 
+																							   and carries traffic for exactly one VLAN — untagged.
+	8.5 #switchport access VLAN 80
+	(once do it will create a VLAN [VLAN number any or provided in the question] if not created before
+	8.6 #do wr																				// save the configuration
+	(once done for one VLAN do it for the remain VLAN in that floor/department as per the question)
+	(Now we need to make the interface that connects to Siwtch -> Router as trunk interface.)
+	8.7 #interface Fa0/1 																	// first select the interface that connects to router
+	8.8 #switchport mode trunk
+	8.9 #do wr 																				// write the configuration
+	
+	(once done for one Department do it for the remain floor/department as per the question)
+	
+	Now Why we do we have to make a trunk interface. Reason as below:
+	1. An access port physically cannot carry more than the on VLAN it's been assigned to
+	2. If the interface connecting switch -> router will be assigned a VLAN then it will only carry that VLAN traffic and all the other VLAN traffic will be lost
+	3. To resolve this we need a trunk interface/port as it is designed to carry multiple VLANs over a physical link allowing successful interVLAN Routing
+	4. Each frame is tagged with a VLAN ID 
+	
+	
+	Question : what will happen if we do not assign the port that connects from switch to router as trunk or access ?
+	Answer : if you leave the switch port on its default (dynamic auto) instead of explicitly setting switchport mode trunk:
+	The switch keeps sending DTP negotiation frames, waiting for a reply
+	The router never responds, because it has no idea what DTP even is
+	Negotiation times out and fails
+	The port typically settles into access mode as a fallback, tagged to the default/native VLAN (usually VLAN 1)
+	Only untagged traffic passes 
+	Basically subinterfaces get no tagged frames at all, since the switch never tags anything in access mode
+	
+	
+Assign IP Addresses to Router and the VLANs
+
+Step 9 : Select the router
+	9.1 #configure terminal
+	9.2 #interface se0/2/0												
+	9.3 #ip address [ip address as per the question] [subnet mask]			//the IP and subnet mask is given in the problem. Each Network with Subnet mask /30 will have only 2 host 
+	9.4 #do wr
+	
+	Now do the same for all the other routers
+	
+Now we create sub interface on the router and assign the IP address to those sub interfaces. Why? 
+Because it saves money and time rather than installing other physical interfaces or using cables.
+With one switch one router and one physical connection creating sub interface is the best and realistic options
+It also improves scalibility. In future if we need another VLAN we can just create another subinterface instead of physically connecting it to another interface using more cables.
+
+Step 10 : Select Router
+	10.1 Go to CLI
+	10.2 >enable
+	10.3 #configure terminal
+	10.4 #interface gig0/0.[VLAN number]										//create sub interface
+	10.5 #encapsulation dot1Q [VLAN number]
+	10.6 #ip address [IP address(not network address)] [subnet mask]
+	10.7 #do write 																// save configuration
+	
+	The #encapsulation dot1Q [VLAN number] --- this tells subinterface that traffic tagged with VLAN ID [80] belongs to that particular subinterface and that subinterface will handle any traffic with that VLAN ID/Tag
+	encapsulation — specifies the tagging protocol used on this subinterface
+	dot1Q — the protocol itself (802.1Q trunking standard, as opposed to the older/rarer ISL)
+	80 — the VLAN ID this subinterface handles
+	#encapsulation dot1Q 80 means: "Any frame arriving on this physical port tagged as VLAN 80 should be processed by this subinterface, using its IP address for routing."
+	
+	Do the same for the rest of the VLANs
+	
+	
+Now we enable DHCP service and DHCP Pool
+
+Step 11: Select the Router
+	11.1 go to CLI
+	11.2 >en or enable
+	11.3 #configure terminal
+	11.4 #service dhcp										//enable DHCP
+	11.5 #ip dhcp pool [Name of the Pool]				
+	11.6 #network [network address for the VLAN] [subnet mask]
+	11.7 #default-router [IP address of the subinterface]
+	11.8 #dns-server [as per requirement]
+	11.9 #do wr
+	
+Now do the same for all the other Floor and Departments.
+
+Now we configure the OSPF Routing technique for routers to learn all the IP existing in our Whole Network. Without this the Router cannot communicate with devices sitting behind another router.
+
+Step 12: Select the Router
+	12.1 go to CLI
+	12.2 >enable
+	12.3 #configure terminal
+	12.4 #router ospf 10
+	12.5 #network [network ip] [subnet masl] area 0            //do this for all the network that is connected behind that router + the adjacent router the current router is connected to.
+	12.6 do wr
+	
+Now we configure SSH on routers
+Step 13: Select the Router
+	13.1 >enable
+	13.2 #configure terminal
+	13.3 #hostname [any host name for the router]
+	12.4 #ip domain-name [any name]
+	12.5 #username [username_any] password [password_any]
+	12.6 #crypto key generate rsa
+	12.7 #will ask for size : [1024]
+	12.8 #line vty 0 15
+	12.9 #login local
+	12.10 #transport input [ssh]
+	12.11 #do wr
+
+The above can be explained as below : 	
+hostname + domain-name → required before RSA keys can be generated
+crypto key generate rsa → required before SSH can be enabled at all (this is the actual on-switch)
+username → required before login local has any database to check against
+line vty + login local + transport input ssh → required to actually enforce SSH-only, authenticated access on the lines people connect through
+
+
+Now Finally we enable the port security on the IT PC
+Step 14. Select the  switch
+	14.1 go to cli
+	14.2 >enable
+	14.3 #interface [fa0/2]									//select that interface that connects the PC to Switch
+	14.4 #switchport port-security
+	14.5 #switchport port-security maximum 1				//allows only 1 device to be connected to this port
+	14.6 #switchport port-security mac-address [sticky]		// tells the interface to grab the mac address of the device and stick with it
+	14.7 #switchport port-security violation [shutdown]		// tells the interface that if there is anyone else trying to access this port immediately shutdown
+	14.8 #do wr
+	
+	
+to confirm the SSH login
+use the command
+ssh -l [username] [ip address]
+will ask for password
+
+	

@@ -1,0 +1,124 @@
+Step 1 : Design the network topologies with routers switches and end devices...
+		 - user 2911 routers for Main Campus, Branch Campus and Cloud(Email Server)
+		 - Multi Layer Switch 3560
+		 - L2 Switches at each department
+		 - one Pc and Printer each Department
+
+
+Step 2 : connect all the router with Serial DCE cables. First install the DCE serial Module
+
+Step 3 : Start the wiring of devices 
+
+Step 4 : Turn on all interfaces on the switches and router
+		> go to router/switch
+		> go to CLI
+		> en
+		> #configure terminal
+		> #interface (select the interface or range of interfaces)
+		> #no shutdown (this will turn on the interface)
+		
+
+Step 5 : Set the clock rate on the Serial DCE Interface on the routers
+		> hover over the triange on the serial DCE line between the router.
+		> it will show the interface name along with a clock symbol. ( which indicates that the interface is serial interface)
+		> open CLI
+		> en
+		> #conf terminal
+		> #interface (select the interface)
+		> #clock rate 64000
+		> #do write  (will save the configuration)
+		> do this for the remain Serical Interface on other routers
+		
+Step 6 : Create Vlans on the L2 Switches
+		> select any one L2 Switch
+		> go to CLI
+		> en
+		> #conf terminal
+		> #int range fa0/1-24 (all the devices connected to this L2 switch will come under one single VLAN)
+		> #switchport mode access
+		> #switchport access vlan [10] 				// [10] any VLAN number or the VLAN number give in the problem statement)
+		> #do write
+		> #exit
+		> now do this for all the remaining L2 Switches
+		
+Step 7 : Create VLAN on the L3 Switch
+		on L3 Switch the interface connecting the L3 -> L2 Switch will be a VLAN but
+		the interface connecting the L3 -> Router will be a trunk interface which will carry the interface from all the Vlans
+		> go to L3 Switche
+		> go to CLI
+		> enable
+		> #conf terminal 
+		
+		(select the interface connected to L2 switch one at a time and make the interface a VLAN )
+		
+		> #interface fa0/1
+		> #switchport mode access
+		> #switchport access vlan [10] 				// [10] VLAN number as per the connection from L3 -> L2 Switch
+		> #do write
+		
+		(now we select the interface connected from L3 -> Router and make it a trunk interface)
+		
+		> #interface [gig1/0/1]					// [] check your interface and name it accordingly without the []
+		> #switchport trunk encapsulation dot1Q
+		> #switchport mode trunk
+		> #do write
+		(the above will make the interface as trunk
+		
+		
+		
+Step 8 : Start Assigning IP address
+		assign IP address to routers interface
+		> select the router and go to CLI
+		> #en
+		> #conf terminal
+		> #interface [se0/0/0]						// select the interface to assign the IP address from the IP address given
+		> #ip address [000.000.000.000] [subnet mask]
+		> #do write
+		
+		do the same for all the other routers and L2 Switches 
+		
+Step 9 : Start InterVLAN routing and enable DHCP service on the router
+
+(first for interVLAN routing. we need to create sub interface on the Router. Why? we have one physical cable running from Building A's switch up to its router (or one uplink per building, at most). A single physical interface can only belong to one IP subnet at a time — so how does one wire give the router a presence in four different VLANs? We create sub interface.)
+
+		> select the router and go to CLI
+		> enable
+		> #conf t 
+		> #int gig0/0/0.10  			// here the .[10] the 10 is the number of the VLAN assigned to a department. This line creates a subinterface 
+										   for the VLAN 10 on the router interface 
+		> #encapsulation dot1Q 10 		// 10 here is the VLAN number
+		> #ip address [first host ip of the network] [subnet mask]
+		> #do write
+		(the subinterface is created and assigned an IP address which will act as a gateway. do this for all the remain Vlans)
+		
+		now we enable the dhcp service
+		
+		
+		> #conf terminal
+		> #service dhcp
+		> #ip dhcp pool [deparmentname-pool]
+		> #network [network address] [subnet mask]						// the network address is the address of the department as given
+		> #default-router [first host ip addressof that network]
+		> #dns-server [ same as above ]
+		> do write
+		
+		(now create pool for all the other department with their respective network addresses. once done do write to save the config.)
+		
+		
+Step 10 : Enable routing protocol on the routers
+		> go to router and then CLI
+		> enable
+		> #conf terminal
+		> #router rip 					//rip version 2 is the routing protocol being used here
+		> #version 2
+		> #network [network address ]
+		(list all the network that is connected with router through interfaces and sub interfaces.)
+		> #do write
+		
+Step 11 : check the dhcp services and ping for communication test
+
+Step 12 : Done
+		
+		
+		
+

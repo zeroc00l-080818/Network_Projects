@@ -1,0 +1,155 @@
+we will skip the VISO part. Directly start with Packet Tracer 
+
+Step 1 : Design the network 
+	- use L2 2690 Switches 							(Access Layer)
+	- L3 3650 Switches  							(Distribution Layer)
+	- 2911 Main Router with Serial DCE Cables		(Core Layer)
+	
+
+Step 2 : Start with Basic Configuration on Swithches and Routers
+
+2.1 For L2 Switches
+	> en
+	> #hostname [L2 Switch] 							//name as per the department
+	> #banner motd #" message here "#
+	> #line console 0									//
+	> #password [any password]
+	> #login
+	> #exit
+	> #line vty 0 15									//
+	> #password [any password]
+	> #login
+	> #exit
+	> #no ip domain-lookup								//
+	> #enable password [any password]					//
+	> #service password-encryption						// encrypts the password
+	> #do wr
+	> #exit
+	
+configure the same for all the other L2 Switches 
+
+2.2 for L3 Switches and routers 
+	> en
+	> #hostname [L3 Switch/Router Name] 							
+	> #banner motd #" message here "#
+	> #line console 0									//
+	> #password [any password]
+	> #login
+	> #exit
+	> #ip domain name [any domain name]					//this + the hostname required steps to enable the SSH on the L3 switch
+	> #username [any username] password [any password]	//any username and password without the []
+	> #crypto key generate rsa							// on the next line set 1024 as the size of bits in modules
+	> #line vty 0 15									//
+	> #login local										//
+	> #transport input ssh 								//
+	> #do wr
+	> #exit
+	
+	
+Step 3 : Creating VLANson L2 Switch and enable security features on the access ports
+
+	> en
+	> #conf t
+	> #int range fa0/2-24 						//check the ports that are connected from L2 to end devices and put them in this command after range
+	> #switchport mode access
+	> #switchport access vlan 10				//replace 10 with any other vlan number as per requirement
+	> #switchport port-security 
+	> #switchport port-security maximum 				//
+	> #switchport port-security mac-address sticky		//
+	> #siwtchport port-security violation shutdown		//
+	> #do write
+	> #exit
+	
+Now do the same for all the L2 Switches in the Network
+
+3.1 Once the Accessport have been set we will configure the trunk port. All the interface from L2 -> L3 will be trunk interface
+	> en
+	> #conf t
+	> int range fa0/1-2
+	> #switchport mode trunk
+	> #do wr
+	> #exit
+
+
+Step 4 : now we do the subnetting and IP addressing
+
+This part is done on the router and L3 interfaces that are connected to the router
+
+	> go to router and then CLI
+	> en
+	> #int se0/0/0					// start by selecting any one interface and assign the IP as given
+	> #ip address [first host address] [subnet mask]
+	> #do wr
+	Do the same for all the interfaces on this and other routers as well
+
+For L3 switch we need to do some additional work. First we need to make L2 ports L3 interface on the L3 Switch with the following command
+
+	> en
+	> #conf t
+	> #int gig0/0						// here select the interface that is connected from L3 -> Router
+	> #no switchport 					// this will conver L2 ports L3 interface 
+	> #do wr
+	do this for the all the interaces connectes to router. Once do we can follow the above steps to assign IP address.
+	
+Step 5 : Configure Router and L3 switch with OSPF 
+	For the Router do the following
+	> en
+	> #conf that
+	> #router ospf
+	> #network [network address] [wild card mask] area 0					// add the address and wild card mask without the []
+	
+	list all the network address that the router is connected to.
+	
+	(wild card mask is subtracting the subnet mask from 255.255.255.255 eg. subnet mask = 255.255.255.192 
+	wild card mask = 255.255.255.255 - 255.255.255.255.192 = 0.0.0.63)
+	
+	For L3 Switch first we need to enable IP routing with the following commands
+	> en
+	> #conf t
+	> #ip routing
+	
+	Once done use same code as used in the router to configure the OSPF
+	
+5.1 For server room devices we need to assign IP manually to the servers
+
+Step 6 : enable DHCP services and configure the DHCP Pool
+
+	> go to IT department select the DHCP server
+	> go to services Tab
+	> select DHCP
+	> start creating pools for each department with their respective IP addresses
+	
+	
+Step 7 : configure InterVLAN routing and DCHP helper for each department
+	
+	> since 2 L3 switches are connected all 6 L2 Switches on one side we will create same VLANs on both sides and assign them IP address and DHCP helper address as well. Reason for 2 L3 Switches to be connected to all 6 L2 switches is to make the network redundant if one fails the other switch will keep the network Up.
+	
+	> go to L3 switches
+	> first we create VLANs
+	
+	> en
+	> #conf t
+	> #vlan 10
+	> #vlan 20
+	> #vlan 30
+	> #vlan 40
+	> #vlan 50
+	> #vlan 60
+	
+	(now we select one Vlan at a time and assign them IP address and DHCP helper IP address)
+	
+	> #int vlan 10
+	> #ip address [first host of the network] [subnet mask]					// without the []
+	> #ip helper-address [ip address of the dhcp server]					// ip address of the dhcp server will - this will be used to interact with the DCHP server to automatically assign the IP address to the devices in this network
+	> #do wr
+	> exit
+	> # do show vlan					// do this to check the VLAn configuration
+	
+	Once done do the same for all the other vlan on this side which are VLAN 10, 20, 30, 40, 50, 60
+	Once done on one side do the same for the other side as well.
+	
+	
+	
+
+
+	
